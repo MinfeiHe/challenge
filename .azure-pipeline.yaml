@@ -21,9 +21,6 @@ stages:
       displayName: Build Container Image
       steps:
         - script: |
-            curl -LO https://s3.us-west-2.amazonaws.com/amazon-eks/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator && sudo mv aws-iam-authenticator /usr/bin/aws-iam-authenticator && chmod +x /usr/bin/aws-iam-authenticator
-          displayName: Install AWS IAM Authenticator
-        - script: |
             aws ecr get-login-password --region eu-west-1 | docker login --username AWS --password-stdin 095082595178.dkr.ecr.eu-west-1.amazonaws.com
           displayName: Login ECR
           env:
@@ -46,10 +43,6 @@ stages:
             Dockerfile: ${{ variables.Dockerfile }}
             buildContext: ${{ variables.buildContext }}
             tags: ${{ variables.appTag }}
-          env:
-            AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
-            AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
-            AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
     - job: deployMyWebApp
       displayName: Deploy MyWebApp with Helm@3
       dependsOn: dockerBuild
@@ -69,9 +62,9 @@ stages:
         # And EKS KubeConfig requires iam-authenticator to assume the role, which ADO service connection doesn't support.
         - script: |
             helm upgrade --install mywebapp ./helm/mywebapp/  --namespace minfei --version 0.0.1 --create-namespace \
-            -set imagePullSecret.registryUsername=$(AWS_ECR_USER) \
-            -set imagePullSecret.registryPassword=$(AWS_ECR_TOKEN)
-          displayName: Pull KubeConfig
+            --set imagePullSecret.registryUsername=$(AWS_ECR_USER) \
+            --set imagePullSecret.registryPassword=$(AWS_ECR_TOKEN)
+          displayName: Helm Deployment MyWebApp
           env:
             AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
             AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
