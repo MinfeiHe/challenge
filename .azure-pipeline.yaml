@@ -26,9 +26,17 @@ stages:
             command: login
             containerRegistry: aws-ecr-access
         - task: Docker@2
-          displayName: Build and Push Image
+          displayName: Build Image
           inputs:
-            command: buildAndPush # buildAndPush ignores arguments. To pass arguments, create two tasks: build, push
+            command: build
+            repository: ${{ variables.dockerRepository }}
+            Dockerfile: ${{ variables.Dockerfile }}
+            buildContext: ${{ variables.buildContext }}
+            tags: ${{ variables.appTag }}
+        - task: Docker@2
+          displayName: Push Image
+          inputs:
+            command: push
             repository: ${{ variables.dockerRepository }}
             Dockerfile: ${{ variables.Dockerfile }}
             buildContext: ${{ variables.buildContext }}
