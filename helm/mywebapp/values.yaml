@@ -2,27 +2,43 @@
 replicaCount: 1
 
 image:
-  repository: 345156409809.dkr.ecr.eu-west-1.amazonaws.com/plt.test
+  repository: 095082595178.dkr.ecr.eu-west-1.amazonaws.com/fl-application
   pullPolicy: IfNotPresent
-  tag: test1
+  tag: 0.0.1
+  
+container:
+  env:
+    - name: GREET_VAR
+      value: Minfei
 
 serviceAccount:
   create: true
   name: ""
 
 service:
-  type: ClusterIP
+  type: LoadBalancer
   port: 80
+
+imagePullSecret:
+  registryURL: 095082595178.dkr.ecr.eu-west-1.amazonaws.com
+  registryUsername: 
+  registryPassword: 
 
 resources:
   limits:
     cpu: 200m
     memory: 200Mi
   requests:
-    cpu: 100m
+    cpu: 150m
     memory: 100Mi
 
 autoscaling:
-  enabled: false
+  enabled: true
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 85
   minReplicas: 1
-  maxReplicas: 3
+  maxReplicas: 5
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
