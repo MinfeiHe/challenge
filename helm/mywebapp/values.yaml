@@ -2,7 +2,7 @@
 replicaCount: 1
 
 image:
-  repository: 095082595178.dkr.ecr.eu-west-1.amazonaws.com/fl-application
+  repository: 095082595178.dkr.ecr.eu-west-1.amazonaws.com/mywebapp
   pullPolicy: IfNotPresent
   tag: 0.0.1
   

@@ -3,7 +3,7 @@ variables:
   - name: appTag
     value: 0.0.1
   - name: dockerRepository
-    value: 095082595178.dkr.ecr.eu-west-1.amazonaws.com
+    value: mywebapp
   - name: Dockerfile
     value: Dockerfile
   - name: buildContext
