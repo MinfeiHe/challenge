@@ -1,0 +1,102 @@
+parameters:
+  - name: action
+    displayName: action
+    type: string
+    default: install
+    values:
+    - install
+    - uninstall
+
+variables:
+  - group: aws_access
+  - name: appTag
+    value: 0.0.1
+  - name: dockerRepository
+    value: 095082595178.dkr.ecr.eu-west-1.amazonaws.com/mywebapp
+  - name: Dockerfile
+    value: Dockerfile
+  - name: buildContext
+    value: .
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+- stage: applicationDeploy
+  displayName: Deploy MyWebApp
+
+  jobs:
+    - job: dockerBuild
+      displayName: Build Container Image
+      condition: eq('${{ parameters.action }}', 'install')
+      steps:
+        - script: |
+            aws ecr get-login-password --region eu-west-1 | docker login --username AWS --password-stdin 095082595178.dkr.ecr.eu-west-1.amazonaws.com
+          displayName: Login ECR
+          env:
+            AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+            AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
+            AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        - task: Docker@2
+          displayName: Build Image
+          inputs:
+            command: build
+            repository: ${{ variables.dockerRepository }}
+            Dockerfile: ${{ variables.Dockerfile }}
+            buildContext: ${{ variables.buildContext }}
+            tags: ${{ variables.appTag }}
+        - task: Docker@2
+          displayName: Push Image
+          inputs:
+            command: push
+            repository: ${{ variables.dockerRepository }}
+            Dockerfile: ${{ variables.Dockerfile }}
+            buildContext: ${{ variables.buildContext }}
+            tags: ${{ variables.appTag }}
+    - job: deployMyWebApp
+      displayName: Deploy MyWebApp with Helm@3
+      dependsOn: dockerBuild
+      condition: and(succeeded(), eq('${{ parameters.action }}', 'install'))
+      steps:
+        - script: |
+            curl -LO https://s3.us-west-2.amazonaws.com/amazon-eks/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator && sudo mv aws-iam-authenticator /usr/bin/aws-iam-authenticator && chmod +x /usr/bin/aws-iam-authenticator
+          displayName: Install AWS IAM Authenticator
+        - script: |
+            aws eks update-kubeconfig --region eu-west-1 --name fl-platform --role-arn arn:aws:iam::095082595178:role/eks-pl-iac
+          displayName: Pull KubeConfig
+          env:
+            AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+            AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
+            AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        # Not using HelmDeploy@0 as it requires ADO service connection with KubeConfig. 
+        # And EKS KubeConfig requires iam-authenticator to assume the role, which ADO service connection doesn't support.
+        - script: |
+            helm upgrade --install mywebapp ./helm/mywebapp/  --namespace minfei --version 0.0.1 --create-namespace \
+            --set imagePullSecret.registryUsername=$(AWS_ECR_USER) \
+            --set imagePullSecret.registryPassword=$(AWS_ECR_TOKEN)
+          displayName: Helm Deployment MyWebApp
+          env:
+            AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+            AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
+            AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+    - job: uninstallMyWebApp
+      displayName: Uninstall MyWebApp with Helm@3
+      condition: eq('${{ parameters.action }}', 'uninstall')
+      steps:
+        - script: |
+            curl -LO https://s3.us-west-2.amazonaws.com/amazon-eks/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator && sudo mv aws-iam-authenticator /usr/bin/aws-iam-authenticator && chmod +x /usr/bin/aws-iam-authenticator
+          displayName: Install AWS IAM Authenticator
+        - script: |
+            aws eks update-kubeconfig --region eu-west-1 --name fl-platform --role-arn arn:aws:iam::095082595178:role/eks-pl-iac
+          displayName: Pull KubeConfig
+          env:
+            AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+            AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
+            AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        - script: |
+            helm uninstall mywebapp --namespace minfei
+          displayName: Helm Uninstall MyWebApp
+          env:
+            AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+            AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
+            AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
