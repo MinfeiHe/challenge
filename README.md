@@ -53,6 +53,8 @@ Since we are exposing application on service layer with HTTP protocol. Service t
 **Expose the application to the internet. You may use the Route53 zone that has already been created in the provided AWS account, in region `eu-west-1`.**
 Once the Load balancer that is associated with app service, I manually added the DNS record in the provided Route53 hosted zone. It's an A-record that points to the right AWS classic load balancer.
 
+With Helm, I've also added a secret `${mywebapp}-image-pull-secret` template. It generates ECR access secret with registry Url, ECR username and ECR token, which are stored in Azure DevOps library. Deployment is referencing to the `${mywebapp}-image-pull-secret` for pulling the image.
+
 ## CI/CD
 For CI/CD solution, an Azure DevOps YAML pipeline is provided. It follows
 On condition of `install`
